@@ -1,4 +1,8 @@
 package com.iot.development;
+
+import mraa.Aio;
+import mraa.Gpio;
+
 public class IOTDevelopment {
 
   static {
@@ -13,7 +17,8 @@ public class IOTDevelopment {
   }
 
   public static void main(String[] args) {
-    // TODO Auto-generated method stub
+    Aio a = new Aio(3);
+    Gpio digital = new Gpio(13);
   }
 
 }
