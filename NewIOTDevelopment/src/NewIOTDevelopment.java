@@ -4,7 +4,6 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import mraa.Aio;
-import mraa.Gpio;
 import mraa.Platform;
 import mraa.mraa;
 
@@ -24,6 +23,16 @@ public class NewIOTDevelopment {
 	}
 
 	public static void main(String[] args) {
+
+		// check that we are running on Galileo or Edison
+		Platform platform = mraa.getPlatformType();
+		if (platform != Platform.INTEL_GALILEO_GEN1
+				&& platform != Platform.INTEL_GALILEO_GEN2
+				&& platform != Platform.INTEL_EDISON_FAB_C) {
+			System.err.println("Unsupported platform, exiting");
+			return;
+		}
+		
 		try {
 			Class.forName("com.mysql.jdbc.Driver");
 		} catch (ClassNotFoundException e) {
@@ -45,53 +54,44 @@ public class NewIOTDevelopment {
 			return;
 		}
 
-		// check that we are running on Galileo or Edison
-		Platform platform = mraa.getPlatformType();
-		if (platform != Platform.INTEL_GALILEO_GEN1
-				&& platform != Platform.INTEL_GALILEO_GEN2
-				&& platform != Platform.INTEL_EDISON_FAB_C) {
-			System.err.println("Unsupported platform, exiting");
-			return;
-		}
-
 		// create an analog input object from MRAA using pin A0
 		Aio pin = new Aio(0);
-		Gpio pin2 = new Gpio(13);
+		// Gpio pin2 = new Gpio(13);
 
 		// loop forever printing the input value every second
 		int counter = 0;
-		while (counter < 100) {
+
+		while (true) {
+			if (counter == 10) {
+				counter = 0;
+				break;
+			}
 			int value = pin.read();
-			System.out.println(String.format("Pin value: %d", value));
-			dt = new java.sql.Date(0);
-			// the mysql insert statement
-			String query = " insert into sensor (dateandtime,valuess)"
-					+ " values (?, ?)";
+			if (value > 0 && value < 10) {
+				System.out.println(String.format("Pin value: %d", value));
+				try {
+					dt = new java.sql.Date(0);
+					// the mysql insert statement
+					String query = " insert into sensor (dateandtime,valuess)"
+							+ " values (?, ?)";
+					PreparedStatement preparedStmt = connection
+							.prepareStatement(query);
+					preparedStmt.setDate(1, dt);
+					preparedStmt.setInt(2, value);
 
-			// create the mysql insert preparedstatement
-			try {
-				PreparedStatement preparedStmt = connection
-						.prepareStatement(query);
-				preparedStmt.setDate(1, dt);
-				preparedStmt.setInt(2, value);
+					// execute the preparedstatement
+					preparedStmt.execute();
+					counter++;
+				} catch (Exception e) {
+					System.out.println("Duplicate entries are not allowed.");
+				}
+			}
 
-				// execute the preparedstatement
-				preparedStmt.execute();
-			} catch (Exception e) {
-				System.out.println("Error adding value to db: " + e.toString());
-			}
-			if (value < 5) {
-				pin2.write(1);
-			} else {
-				pin2.write(0);
-			}
 			try {
-				Thread.sleep(10);
+				Thread.sleep(1000);
 			} catch (InterruptedException e) {
 				System.err.println("Sleep interrupted: " + e.toString());
 			}
-			counter++;
 		}
-
 	}
 }
